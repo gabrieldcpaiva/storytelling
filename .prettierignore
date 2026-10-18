@@ -1,0 +1,7 @@
+node_modules
+dist
+package-lock.json
+public/images
+playwright-report
+test-results
+*.tsbuildinfo
