@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Immersive Story Engine v1.0 — Beat-Split Timeline & Continuity Studio</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="logo">◎</span>
+    <div>
+      <h1>Immersive Story Engine <span class="ver">v1.0</span></h1>
+      <p>Beat-Split Timeline &amp; Continuity Studio</p>
+    </div>
+  </div>
+  <div class="project-switch">
+    <label>Project
+      <select id="projectSelect"></select>
+    </label>
+    <button id="btnNewProject" class="btn ghost" title="Create blank project">+ New</button>
+    <button id="btnDuplicate" class="btn ghost" title="Duplicate project">Duplicate</button>
+    <button id="btnReset" class="btn danger ghost" title="Reset samples (clears local changes)">Reset samples</button>
+  </div>
+</header>
+
+<main>
+<!-- ═══════════════ STAGE 0: CONTINUITY BIBLE ═══════════════ -->
+<section class="panel" id="stage0">
+  <div class="panel-head">
+    <h2><span class="stage-tag">BIBLE</span> Global Continuity Bible &amp; Voice Profile Header</h2>
+    <span class="lock-badge">🔒 Continuity Lock · applied to all frames</span>
+  </div>
+  <div class="grid-2">
+    <div class="bible-form">
+      <div class="field">
+        <label>Project Title</label>
+        <div class="inline">
+          <input id="bTitle" list="titlePresets" placeholder="Wrath of Fire / Frozen Light / custom…" />
+          <datalist id="titlePresets">
+            <option value="Wrath of Fire"></option>
+            <option value="Frozen Light"></option>
+          </datalist>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label>Color Pipeline</label>
+          <select id="bColor">
+            <option>ACEScg</option><option>ACEScct</option><option>Rec.709</option><option>Rec.2020 PQ</option><option>ARRI LogC4</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Aspect Ratio</label>
+          <select id="bAspect">
+            <option value="2.39:1">2.39:1 Anamorphic</option>
+            <option value="16:9">16:9</option>
+            <option value="9:16">9:16 Vertical</option>
+            <option value="1:1">1:1</option>
+            <option value="4:3">4:3</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Frame Rate</label>
+          <select id="bFps"><option>24</option><option>25</option><option>30</option><option>60</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label>Default Camera / Lens Rig</label>
+        <input id="bCamera" placeholder="ARRI Alexa Mini, 50mm Anamorphic, f/1.8" />
+      </div>
+      <div class="field">
+        <label>Film Stock / Grade</label>
+        <input id="bStock" placeholder="35mm Kodak Vision3 500T" />
+      </div>
+      <div class="field">
+        <label>Recurring Motifs</label>
+        <input id="bMotifs" placeholder="comma separated: flickering sodium light, breath vapor…" />
+      </div>
+      <div class="field">
+        <label>Global Negative Prompts</label>
+        <input id="bNegative" placeholder="text, watermark, extra fingers…" />
+      </div>
+    </div>
+    <div class="voice-editor">
+      <div class="field">
+        <label>Voice Profile Map — <code>voice_profiles</code> JSON</label>
+        <textarea id="voiceJson" spellcheck="false" rows="14"></textarea>
+        <div class="inline between">
+          <span id="voiceStatus" class="status ok">valid</span>
+          <div>
+            <button class="btn ghost small" id="btnAddVoice">+ Add profile</button>
+            <button class="btn small" id="btnApplyVoices">Apply voices</button>
+          </div>
+        </div>
+      </div>
+      <div id="voiceChips" class="chips"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 1: SCRIPT CHUNKING ═══════════════ -->
+<section class="panel" id="stage1">
+  <div class="panel-head">
+    <h2><span class="stage-tag">STAGE 1</span> Script Chunking &amp; Timed Beat Decomposition</h2>
+  </div>
+  <div class="grid-2">
+    <div class="field">
+      <label>script_text <span class="muted" id="scriptStats"></span></label>
+      <textarea id="scriptText" rows="10" placeholder="Paste raw script or commercial concept…"></textarea>
+    </div>
+    <div class="stage1-controls">
+      <div class="field">
+        <label>target_duration: <strong id="durLabel">45</strong>s</label>
+        <input type="range" id="targetDuration" min="15" max="180" step="1" value="45" />
+        <div class="range-ticks"><span>15s</span><span>45s</span><span>90s</span><span>180s</span></div>
+      </div>
+      <div class="field">
+        <label>Decomposition Mode</label>
+        <div class="segmented">
+          <button data-mode="narrative" class="seg active">Narrative Micro-Scene</button>
+          <button data-mode="commercial" class="seg">Commercial Beat</button>
+        </div>
+        <p class="hint" id="modeHint"></p>
+      </div>
+      <div class="field">
+        <label>Default speaker for new frames</label>
+        <select id="defaultSpeaker"></select>
+      </div>
+      <div class="field">
+        <label>Fit strategy</label>
+        <select id="fitMode">
+          <option value="fit">Scale beats to fill target_duration</option>
+          <option value="natural">Natural speech duration (ignore target)</option>
+        </select>
+      </div>
+      <button class="btn primary big" id="btnDecompose">⚡ Decompose into Timed Beats</button>
+      <p class="hint">Rebuilds the timeline from <code>script_text</code>. Existing frame edits are replaced.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 2/3: TIMELINE + INSPECTOR ═══════════════ -->
+<section class="panel" id="stage23">
+  <div class="panel-head">
+    <h2><span class="stage-tag">STAGE 2 · 3</span> Multi-Track Frame Inspector — Visual Optics + Audio Ducking</h2>
+    <div class="inline">
+      <span class="muted" id="timelineStats"></span>
+      <button class="btn ghost small" id="btnAddFrame">+ Add frame</button>
+      <button class="btn ghost small" id="btnRetime" title="Recompute all durations from word count & WPM">↻ Retime from speech</button>
+    </div>
+  </div>
+
+  <!-- Transport -->
+  <div class="transport">
+    <button class="btn icon" id="btnPlay" title="Play Timeline Preview">▶</button>
+    <button class="btn icon" id="btnStop" title="Stop">■</button>
+    <button class="btn icon" id="btnPrev" title="Previous frame">⏮</button>
+    <button class="btn icon" id="btnNext" title="Next frame">⏭</button>
+    <span class="tc" id="tcCurrent">00:00.0</span><span class="tc dim">/</span><span class="tc" id="tcTotal">00:00.0</span>
+    <label class="toggle"><input type="checkbox" id="ttsToggle" checked /> speechSynthesis TTS</label>
+    <label class="toggle">Speed <select id="playRate"><option>0.5</option><option selected>1</option><option>1.5</option><option>2</option></select>×</label>
+    <div class="meter-wrap">
+      <span class="meter-label">BGM</span>
+      <div class="meter"><div class="meter-fill" id="bgmMeter"></div><div class="meter-mark" style="left:50%"></div></div>
+      <span class="meter-db" id="bgmDb">0 dB</span>
+    </div>
+  </div>
+
+  <!-- Preview monitor -->
+  <div class="monitor" id="monitor">
+    <div class="monitor-frame" id="monitorFrame">
+      <div class="monitor-meta">
+        <span id="monFrameId">—</span><span id="monWindow"></span><span id="monTransition"></span>
+      </div>
+      <div class="monitor-prompt" id="monPrompt">Select a frame or press play.</div>
+      <div class="monitor-sub" id="monSubtitle"></div>
+      <div class="monitor-sfx" id="monSfx"></div>
+    </div>
+  </div>
+
+  <!-- Horizontal timeline -->
+  <div class="timeline-scroll">
+    <div class="ruler" id="ruler"></div>
+    <div class="tracks" id="tracks">
+      <div class="track" data-track="video"><div class="track-label">VIDEO</div><div class="track-lane" id="laneVideo"></div></div>
+      <div class="track" data-track="dialogue"><div class="track-label">DIALOGUE</div><div class="track-lane" id="laneDialogue"></div></div>
+      <div class="track" data-track="sfx"><div class="track-label">SFX</div><div class="track-lane" id="laneSfx"></div></div>
+      <div class="track" data-track="bgm"><div class="track-label">BGM<br/><small>duck env</small></div><div class="track-lane" id="laneBgm"><svg id="duckSvg" preserveAspectRatio="none"></svg></div></div>
+      <div class="playhead" id="playhead"></div>
+    </div>
+  </div>
+  <p class="hint">Click a block to inspect · drag the right edge of a video block to retime (ripple) · <kbd>←</kbd>/<kbd>→</kbd> to step · <kbd>Space</kbd> play/pause</p>
+
+  <!-- Inspector + vertical list -->
+  <div class="grid-inspector">
+    <div class="frame-list" id="frameList"></div>
+    <div class="inspector" id="inspector"></div>
+  </div>
+</section>
+
+<!-- ═══════════════ STAGE 4: EXPORTER ═══════════════ -->
+<section class="panel" id="stage4">
+  <div class="panel-head">
+    <h2><span class="stage-tag">STAGE 4</span> Final Asset Assembly &amp; Multi-Format Exporter</h2>
+    <div class="tabs" id="exportTabs">
+      <button class="tab active" data-tab="manifest">timeline_manifest.json</button>
+      <button class="tab" data-tab="ffmpeg">render_pipeline.sh</button>
+      <button class="tab" data-tab="remotion">remotion_props.json</button>
+    </div>
+  </div>
+  <div class="export-actions">
+    <span class="muted" id="exportInfo"></span>
+    <div>
+      <button class="btn ghost small" id="btnCopy">⎘ Copy</button>
+      <button class="btn small" id="btnDownload">⬇ Download</button>
+    </div>
+  </div>
+  <pre class="code" id="exportCode"></pre>
+</section>
+</main>
+
+<footer class="foot">Immersive Story Engine v1.0 · state autosaves to localStorage · zero dependencies</footer>
+<div id="toast" class="toast"></div>
+
+<script src="samples.js"></script>
+<script src="engine.js"></script>
+<script src="exporters.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
